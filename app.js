@@ -26,16 +26,22 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 //Database settings
-mongoose.connect("mongodb://localhost:27017/secretsDB", { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true});
+mongoose.connect("mongodb://localhost:27017/secretsDB", {
+    useNewUrlParser: true, 
+    useUnifiedTopology: true, 
+    useCreateIndex: true, 
+    useFindAndModify: false
+});
 
 const userSchema = new mongoose.Schema({
     email: String,
     password: String
 });
-
+const secretSchema = { secret: String };
 userSchema.plugin(passportLocalMongoose);
 
 const User = mongoose.model("User", userSchema);
+const Secret = mongoose.model("Secret", secretSchema);
 
 passport.use(User.createStrategy());
 
@@ -93,10 +99,28 @@ app.route("/register")
 app.route("/secrets")
 .get((req,res)=>{
     if(req.isAuthenticated()){
-        res.render("secrets");
+        Secret.find({}, (err,found)=>{
+            res.render("secrets", {doc : found});
+        })
     } else{
         res.redirect("/login")
     }
+});
+
+//Submit Route
+app.route("/submit")
+.get((req,res)=>{
+    if(req.isAuthenticated()){
+        res.render("submit");
+    } else{
+        res.redirect("/login")
+    } 
+})
+.post((req,res)=>{
+    Secret.findOneAndUpdate({ secret: req.body.secret }, {} , { upsert: true} , ()=>{
+        res.redirect("/secrets")
+    });
+    
 });
 
 //LogOut route
